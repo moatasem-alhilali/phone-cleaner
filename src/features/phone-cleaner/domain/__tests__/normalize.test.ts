@@ -11,6 +11,10 @@ const context = {
   strictMode: true,
   allowMissingTrunkPrefix: true,
   stripExtraLeadingZeros: false,
+  useConditionalInjection: false,
+  ignoreUnmatched: true,
+  fallbackToDefault: false,
+  injectionRules: [],
 };
 
 describe("normalizePhone", () => {

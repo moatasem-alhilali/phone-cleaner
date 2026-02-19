@@ -194,3 +194,125 @@ textarea {
   background: var(--danger-soft);
   color: var(--danger);
 }
+
+.hero-shell {
+  position: relative;
+  padding: 2.5rem;
+  border-radius: 32px;
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.12),
+      transparent 55%
+    ),
+    var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .hero-shell {
+  background: linear-gradient(
+      135deg,
+      rgba(45, 212, 191, 0.08),
+      transparent 55%
+    ),
+    var(--surface);
+}
+
+.hero-shell::before,
+.hero-shell::after {
+  content: "";
+  position: absolute;
+  inset: auto;
+  pointer-events: none;
+  border-radius: 999px;
+  opacity: 0.5;
+  filter: blur(0px);
+}
+
+.hero-shell::before {
+  width: 380px;
+  height: 380px;
+  top: -220px;
+  right: -160px;
+  background: radial-gradient(
+    circle,
+    rgba(45, 212, 191, 0.28),
+    transparent 65%
+  );
+}
+
+.hero-shell::after {
+  width: 320px;
+  height: 320px;
+  bottom: -200px;
+  left: -140px;
+  background: radial-gradient(
+    circle,
+    rgba(56, 189, 248, 0.22),
+    transparent 70%
+  );
+}
+
+.accent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.step-card {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1rem 1.2rem;
+}
+
+.metric-tile {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1rem;
+}
+
+.metric-title {
+  font-size: 0.72rem;
+  color: var(--text-soft);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.section-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.divider-line {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border-strong),
+    transparent
+  );
+}

@@ -1,4 +1,9 @@
-import type { Country, InvalidReason, NormalizationOptions } from "./types";
+import type {
+  Country,
+  InjectionRule,
+  InvalidReason,
+  NormalizationOptions,
+} from "./types";
 import { extractDigits, toWesternDigits } from "../utils/arabicDigits";
 import {
   GENERIC_MAX_LENGTH,
@@ -12,6 +17,9 @@ export type NormalizationSuccess = {
   nationalNumber: string;
   country?: Country;
   isInternational: boolean;
+  matchedRuleId?: string;
+  matchedRuleName?: string;
+  matchedRuleDialCode?: string;
 };
 
 export type NormalizationFailure = {
@@ -25,6 +33,17 @@ export type NormalizationContext = NormalizationOptions & {
   countries: Country[];
   defaultCountry?: Country;
 };
+
+export type InjectionMatchResult =
+  | {
+      matched: true;
+      ruleId: string;
+      ruleName?: string;
+      dialCodeDigits: string;
+      nationalNumber: string;
+      normalizedE164: string;
+    }
+  | { matched: false };
 
 function sanitizeRaw(input: string): string {
   const western = toWesternDigits(input ?? "");
@@ -52,6 +71,35 @@ export function normalizePhone(
 
   if (sanitized.startsWith("+")) {
     return normalizeInternational(sanitized, context.countries);
+  }
+
+  if (context.useConditionalInjection) {
+    const localDigits = extractDigits(sanitized);
+    if (!localDigits) return { ok: false, reason: "no_digits" };
+    const injection = applyConditionalInjection(
+      localDigits,
+      context.injectionRules
+    );
+    if (injection.matched) {
+      const combinedDigits = `${injection.dialCodeDigits}${injection.nationalNumber}`;
+      const country = resolveCountryByDialCode(context.countries, combinedDigits);
+      return {
+        ok: true,
+        normalized: injection.normalizedE164,
+        nationalNumber: injection.nationalNumber,
+        country,
+        isInternational: false,
+        matchedRuleId: injection.ruleId,
+        matchedRuleName: injection.ruleName,
+        matchedRuleDialCode: `+${injection.dialCodeDigits}`,
+      };
+    }
+
+    if (context.fallbackToDefault || !context.ignoreUnmatched) {
+      return normalizeLocal(sanitized, context);
+    }
+
+    return { ok: false, reason: "no_rule_match" };
   }
 
   return normalizeLocal(sanitized, context);
@@ -112,6 +160,68 @@ function normalizeLocal(
     country: defaultCountry,
     isInternational: false,
   };
+}
+
+function normalizeRuleDialCode(rule: InjectionRule): string {
+  const digits = extractDigits(rule.dialCode);
+  return digits;
+}
+
+function matchLength(rule: InjectionRule, length: number): boolean {
+  if (rule.lengthMode === "equals") {
+    if (typeof rule.lengthEquals !== "number") return false;
+    return length === rule.lengthEquals;
+  }
+
+  if (typeof rule.lengthMin !== "number" && typeof rule.lengthMax !== "number") {
+    return false;
+  }
+
+  const min = rule.lengthMin ?? 0;
+  const max = rule.lengthMax ?? Number.MAX_SAFE_INTEGER;
+  return length >= min && length <= max;
+}
+
+function matchPrefixes(rule: InjectionRule, digits: string): boolean {
+  if (rule.prefixes.length === 0) return true;
+  return rule.prefixes.some((prefix) => {
+    const normalized = extractDigits(prefix);
+    if (!normalized) return false;
+    return digits.startsWith(normalized);
+  });
+}
+
+export function applyConditionalInjection(
+  localDigits: string,
+  rules: InjectionRule[]
+): InjectionMatchResult {
+  for (const rule of rules) {
+    if (!rule.enabled) continue;
+
+    const dialDigits = normalizeRuleDialCode(rule);
+    if (!dialDigits) continue;
+
+    if (!matchLength(rule, localDigits.length)) continue;
+    if (!matchPrefixes(rule, localDigits)) continue;
+
+    let nationalNumber = localDigits;
+    if (rule.trunkHandling === "removeLeading0" && nationalNumber.startsWith("0")) {
+      nationalNumber = nationalNumber.slice(1);
+    }
+
+    if (!nationalNumber) continue;
+
+    return {
+      matched: true,
+      ruleId: rule.id,
+      ruleName: rule.name,
+      dialCodeDigits: dialDigits,
+      nationalNumber,
+      normalizedE164: `+${dialDigits}${nationalNumber}`,
+    };
+  }
+
+  return { matched: false };
 }
 
 export function validateLength(

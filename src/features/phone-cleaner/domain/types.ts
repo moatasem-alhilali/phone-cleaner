@@ -1,6 +1,7 @@
 export type InvalidReason =
   | "empty"
   | "no_digits"
+  | "no_rule_match"
   | "too_short"
   | "too_long"
   | "invalid_prefix"
@@ -33,11 +34,29 @@ export type NormalizationOptions = {
   strictMode: boolean;
   allowMissingTrunkPrefix: boolean;
   stripExtraLeadingZeros: boolean;
+  useConditionalInjection: boolean;
+  ignoreUnmatched: boolean;
+  fallbackToDefault: boolean;
+  injectionRules: InjectionRule[];
 };
 
 export type CleaningSettings = NormalizationOptions & {
   detectNameDuplicates: boolean;
   presetId?: string;
+};
+
+export type InjectionRule = {
+  id: string;
+  name?: string;
+  dialCode: string;
+  lengthMode: "equals" | "range";
+  lengthEquals?: number;
+  lengthMin?: number;
+  lengthMax?: number;
+  prefixes: string[];
+  trunkHandling: "keep" | "removeLeading0";
+  matchStrategy: "firstMatchWins";
+  enabled: boolean;
 };
 
 export type ParsedRow = {
@@ -53,6 +72,9 @@ export type NormalizedRow = ParsedRow & {
   normalized?: string;
   nationalNumber?: string;
   country?: Country;
+  matchedRuleId?: string;
+  matchedRuleName?: string;
+  matchedRuleDialCode?: string;
   nameNormalized?: string;
   isKept?: boolean;
 };

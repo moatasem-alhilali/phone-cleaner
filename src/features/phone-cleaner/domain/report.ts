@@ -71,6 +71,10 @@ export function buildProcessingContext(
     strictMode: settings.strictMode,
     allowMissingTrunkPrefix: settings.allowMissingTrunkPrefix,
     stripExtraLeadingZeros: settings.stripExtraLeadingZeros,
+    useConditionalInjection: settings.useConditionalInjection,
+    ignoreUnmatched: settings.ignoreUnmatched,
+    fallbackToDefault: settings.fallbackToDefault,
+    injectionRules: settings.injectionRules,
   };
 }
 
@@ -99,6 +103,9 @@ export function processLine(
       ...parsed,
       status: "invalid",
       reason: validated.reason,
+      matchedRuleId: normalizedResult.ok ? normalizedResult.matchedRuleId : undefined,
+      matchedRuleName: normalizedResult.ok ? normalizedResult.matchedRuleName : undefined,
+      matchedRuleDialCode: normalizedResult.ok ? normalizedResult.matchedRuleDialCode : undefined,
     };
   }
 
@@ -108,6 +115,9 @@ export function processLine(
     normalized: validated.normalized,
     nationalNumber: validated.nationalNumber,
     country: validated.country,
+    matchedRuleId: validated.matchedRuleId,
+    matchedRuleName: validated.matchedRuleName,
+    matchedRuleDialCode: validated.matchedRuleDialCode,
   };
 }
 

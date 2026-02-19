@@ -18,6 +18,7 @@ type ResultsTabsProps = {
   duplicateGroupsByPhone: DuplicateGroup[];
   duplicateGroupsByNamePhone: DuplicateGroup[];
   duplicateGroupsByName: DuplicateGroup[];
+  useConditionalInjection: boolean;
   onCopyPhones: () => void;
   onCopyCsv: () => void;
   onDownloadClean: () => void;
@@ -43,6 +44,16 @@ function reasonLabel(locale: Locale, reason?: string): string {
   return t(locale, `reason_${reason}`);
 }
 
+function ruleLabel(row: NormalizedRow, useConditionalInjection: boolean): string {
+  if (row.matchedRuleName) return row.matchedRuleName;
+  if (row.matchedRuleDialCode) return row.matchedRuleDialCode;
+  if (useConditionalInjection) {
+    if (row.reason === "no_rule_match") return "بدون قاعدة";
+    if (row.status === "valid") return "افتراضي";
+  }
+  return "—";
+}
+
 function EmptyState({ text }: { text: string }) {
   return <div className="py-6 text-center text-sm text-soft">{text}</div>;
 }
@@ -57,6 +68,7 @@ export function ResultsTabs({
   duplicateGroupsByPhone,
   duplicateGroupsByNamePhone,
   duplicateGroupsByName,
+  useConditionalInjection,
   onCopyPhones,
   onCopyCsv,
   onDownloadClean,
@@ -167,6 +179,7 @@ export function ResultsTabs({
                     <th className="text-right">#</th>
                     <th className="text-right">الاسم</th>
                     <th className="text-left">الهاتف</th>
+                    <th className="text-right">القاعدة</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -180,6 +193,9 @@ export function ResultsTabs({
                       </td>
                       <td className="rounded-l-xl px-3 py-2 font-mono text-left text-[var(--text)]">
                         {row.normalized}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-soft">
+                        {ruleLabel(row, useConditionalInjection)}
                       </td>
                     </tr>
                   ))}
@@ -231,6 +247,7 @@ export function ResultsTabs({
                           <div className="flex flex-wrap gap-2 text-[11px] text-soft">
                             <span>خام: {row.phoneRaw || "—"}</span>
                             <span className="truncate">السطر: {row.raw || "—"}</span>
+                            <span>قاعدة: {ruleLabel(row, useConditionalInjection)}</span>
                           </div>
                         </div>
                         <span className="text-soft">
@@ -270,9 +287,14 @@ export function ResultsTabs({
                           key={`name-phone-${row.index}`}
                           className="flex items-center justify-between rounded-lg bg-[var(--surface-strong)] px-3 py-2 text-xs"
                         >
-                          <span className="text-[var(--text)]">
-                            {row.name || "—"}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[var(--text)]">
+                              {row.name || "—"}
+                            </span>
+                            <span className="text-[10px] text-soft">
+                              قاعدة: {ruleLabel(row, useConditionalInjection)}
+                            </span>
+                          </div>
                           <span className="font-mono text-soft" dir="ltr">
                             {row.normalized}
                           </span>
@@ -308,9 +330,14 @@ export function ResultsTabs({
                           key={`name-${row.index}`}
                           className="flex items-center justify-between rounded-lg bg-[var(--surface-strong)] px-3 py-2 text-xs"
                         >
-                          <span className="text-[var(--text)]">
-                            {row.name || "—"}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[var(--text)]">
+                              {row.name || "—"}
+                            </span>
+                            <span className="text-[10px] text-soft">
+                              قاعدة: {ruleLabel(row, useConditionalInjection)}
+                            </span>
+                          </div>
                           <span className="font-mono text-soft" dir="ltr">
                             {row.normalized}
                           </span>
@@ -343,9 +370,10 @@ export function ResultsTabs({
                     <span className="text-[var(--danger)]">#{row.index}</span>
                     <span className="text-[var(--danger)]">{row.raw || "—"}</span>
                   </div>
-                  <span className="text-[var(--danger)]">
-                    {reasonLabel(locale, row.reason)}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-3 text-[var(--danger)]">
+                    <span>{reasonLabel(locale, row.reason)}</span>
+                    <span>قاعدة: {ruleLabel(row, useConditionalInjection)}</span>
+                  </div>
                 </div>
               ))}
             </div>

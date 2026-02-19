@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import logo from "@/app/logo.png";
 import {
   COUNTRIES,
   DEFAULT_COUNTRY_ISO2,
@@ -11,6 +13,7 @@ import type {
   CleaningSettings,
   CleaningStats,
   DuplicateGroup,
+  InjectionRule,
   NormalizedRow,
   WorkerResponse,
 } from "../domain/types";
@@ -23,6 +26,39 @@ import { t, type Locale } from "./i18n";
 
 const HISTORY_KEY = "phone-cleaner.history";
 const THEME_KEY = "phone-cleaner.theme";
+const INJECTION_KEY = "phone-cleaner.injection-settings";
+
+const DEFAULT_INJECTION_RULES: InjectionRule[] = [
+  {
+    id: "rule_saudi_mobile",
+    name: "سعودي موبايل",
+    dialCode: "+966",
+    lengthMode: "equals",
+    lengthEquals: 10,
+    prefixes: ["05"],
+    trunkHandling: "removeLeading0",
+    matchStrategy: "firstMatchWins",
+    enabled: true,
+  },
+  {
+    id: "rule_yemen_local",
+    name: "يمن محلي",
+    dialCode: "+967",
+    lengthMode: "equals",
+    lengthEquals: 9,
+    prefixes: ["77", "73", "71"],
+    trunkHandling: "keep",
+    matchStrategy: "firstMatchWins",
+    enabled: true,
+  },
+];
+
+const createRuleId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `rule_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+};
 
 type HistoryEntry = {
   id: string;
@@ -30,6 +66,13 @@ type HistoryEntry = {
   stats: CleaningStats;
   settings: CleaningSettings;
   inputSample?: string;
+};
+
+type InjectionSettingsStorage = {
+  useConditionalInjection?: boolean;
+  ignoreUnmatched?: boolean;
+  fallbackToDefault?: boolean;
+  injectionRules?: InjectionRule[];
 };
 
 function formatDate(timestamp: number): string {
@@ -70,6 +113,10 @@ export function PhoneCleanerPage() {
     stripExtraLeadingZeros: false,
     detectNameDuplicates: false,
     presetId: "saudi",
+    useConditionalInjection: false,
+    ignoreUnmatched: true,
+    fallbackToDefault: false,
+    injectionRules: DEFAULT_INJECTION_RULES,
   });
 
   const workerRef = useRef<Worker | null>(null);
@@ -133,6 +180,52 @@ export function PhoneCleanerPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(INJECTION_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as InjectionSettingsStorage;
+      if (!parsed) return;
+      setSettings((prev) => ({
+        ...prev,
+        useConditionalInjection:
+          typeof parsed.useConditionalInjection === "boolean"
+            ? parsed.useConditionalInjection
+            : prev.useConditionalInjection,
+        ignoreUnmatched:
+          typeof parsed.ignoreUnmatched === "boolean"
+            ? parsed.ignoreUnmatched
+            : prev.ignoreUnmatched,
+        fallbackToDefault:
+          typeof parsed.fallbackToDefault === "boolean"
+            ? parsed.fallbackToDefault
+            : prev.fallbackToDefault,
+        injectionRules: Array.isArray(parsed.injectionRules)
+          ? (parsed.injectionRules as InjectionRule[])
+          : prev.injectionRules,
+      }));
+    } catch {
+      // ignore invalid local storage
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload = {
+      useConditionalInjection: settings.useConditionalInjection,
+      ignoreUnmatched: settings.ignoreUnmatched,
+      fallbackToDefault: settings.fallbackToDefault,
+      injectionRules: settings.injectionRules,
+    };
+    window.localStorage.setItem(INJECTION_KEY, JSON.stringify(payload));
+  }, [
+    settings.useConditionalInjection,
+    settings.ignoreUnmatched,
+    settings.fallbackToDefault,
+    settings.injectionRules,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
     const worker = new Worker(
       new URL("../workers/cleaner.worker.ts", import.meta.url)
@@ -170,6 +263,85 @@ export function PhoneCleanerPage() {
   const progressPercent = progress.total
     ? Math.min(100, Math.round((progress.processed / progress.total) * 100))
     : 0;
+
+  const normalizeDialCodeInput = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    return trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
+  };
+
+  const updateRule = (id: string, patch: Partial<InjectionRule>) => {
+    setSettings((prev) => ({
+      ...prev,
+      injectionRules: prev.injectionRules.map((rule) =>
+        rule.id === id ? { ...rule, ...patch } : rule
+      ),
+    }));
+  };
+
+  const removeRule = (id: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      injectionRules: prev.injectionRules.filter((rule) => rule.id !== id),
+    }));
+  };
+
+  const moveRule = (index: number, direction: -1 | 1) => {
+    setSettings((prev) => {
+      const next = [...prev.injectionRules];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= next.length) return prev;
+      const [removed] = next.splice(index, 1);
+      next.splice(targetIndex, 0, removed);
+      return { ...prev, injectionRules: next };
+    });
+  };
+
+  const addRule = () => {
+    const newRule: InjectionRule = {
+      id: createRuleId(),
+      name: "",
+      dialCode: "",
+      lengthMode: "equals",
+      lengthEquals: 10,
+      prefixes: [],
+      trunkHandling: "keep",
+      matchStrategy: "firstMatchWins",
+      enabled: true,
+    };
+    setSettings((prev) => ({
+      ...prev,
+      injectionRules: [...prev.injectionRules, newRule],
+    }));
+  };
+
+  const getRuleErrors = (rule: InjectionRule): string[] => {
+    const errors: string[] = [];
+    const dialDigits = rule.dialCode.replace(/\D/g, "");
+    if (!dialDigits) {
+      errors.push("أدخل كود دولة صالح.");
+    }
+    if (rule.lengthMode === "equals") {
+      if (!rule.lengthEquals || rule.lengthEquals <= 0) {
+        errors.push("حدد طولًا صحيحًا.");
+      }
+    } else {
+      if (
+        (rule.lengthMin ?? 0) <= 0 &&
+        (rule.lengthMax ?? 0) <= 0
+      ) {
+        errors.push("حدد نطاق طول صالح.");
+      }
+      if (
+        rule.lengthMin &&
+        rule.lengthMax &&
+        rule.lengthMin > rule.lengthMax
+      ) {
+        errors.push("النطاق غير صحيح (الحد الأدنى أكبر من الأعلى).");
+      }
+    }
+    return errors;
+  };
 
   const handlePresetChange = (presetId: string) => {
     if (presetId === "custom") {
@@ -311,6 +483,16 @@ export function PhoneCleanerPage() {
     }
   };
 
+  const ruleLabelForExport = (row: NormalizedRow) => {
+    if (row.matchedRuleName) return row.matchedRuleName;
+    if (row.matchedRuleId) return row.matchedRuleId;
+    if (row.matchedRuleDialCode) return row.matchedRuleDialCode;
+    if (settings.useConditionalInjection && row.reason === "no_rule_match") {
+      return "no_rule_match";
+    }
+    return "";
+  };
+
   const handleDownloadClean = () => {
     if (!report) return;
     const rows = [
@@ -330,6 +512,7 @@ export function PhoneCleanerPage() {
       "name",
       "raw_phone",
       "normalized_phone",
+      "matched_rule",
       "raw_line",
     ];
 
@@ -342,6 +525,7 @@ export function PhoneCleanerPage() {
         row.name ?? "",
         row.phoneRaw ?? "",
         row.normalized ?? "",
+        ruleLabelForExport(row),
         row.raw ?? "",
       ])
     );
@@ -351,11 +535,12 @@ export function PhoneCleanerPage() {
 
   const handleDownloadInvalid = () => {
     if (!report) return;
-    const header = ["row_index", "raw_line", "reason"];
+    const header = ["row_index", "raw_line", "reason", "matched_rule"];
     const rows = report.invalid.map((row) => [
       String(row.index),
       row.raw ?? "",
       row.reason ?? "",
+      ruleLabelForExport(row),
     ]);
     downloadTextFile("invalid.csv", stringifyCsv([header, ...rows]));
   };
@@ -363,17 +548,27 @@ export function PhoneCleanerPage() {
   return (
     <div className="min-h-screen text-[var(--text)]">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-col gap-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-              Phone Cleaner
-            </span>
-            <h1 className="text-3xl font-semibold text-[var(--text)]">
-              {t(locale, "app_title")}
-            </h1>
-            <p className="max-w-2xl text-sm text-muted">
-              {t(locale, "app_subtitle")}
-            </p>
+        <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="surface-strong flex h-14 w-14 items-center justify-center rounded-xl p-1">
+              <Image
+                src={logo}
+                alt="Phone Cleaner Logo"
+                width={48}
+                height={48}
+                className="h-12 w-12 object-contain"
+                priority
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="accent-pill">Phone Cleaner</div>
+              <h1 className="text-3xl font-semibold text-[var(--text)]">
+                {t(locale, "app_title")}
+              </h1>
+              <p className="max-w-2xl text-sm text-muted">
+                {t(locale, "app_subtitle")}
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -383,11 +578,13 @@ export function PhoneCleanerPage() {
             className="btn-outline px-4 py-2 text-xs font-semibold"
             aria-pressed={theme === "dark"}
           >
-            {theme === "dark" ? t(locale, "theme_light") : t(locale, "theme_dark")}
+            {theme === "dark"
+              ? t(locale, "theme_light")
+              : t(locale, "theme_dark")}
           </button>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <div className="surface-card p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--text)]">
@@ -421,6 +618,10 @@ export function PhoneCleanerPage() {
                 </button>
               </div>
             </div>
+            <p className="mb-3 text-xs text-soft">
+              الصق الأرقام كما هي. يدعم: رقم فقط، أو اسم + رقم، أو CSV.
+              لن يتم إرسال بياناتك لأي خادم.
+            </p>
 
             <textarea
               value={input}
@@ -441,6 +642,7 @@ export function PhoneCleanerPage() {
               >
                 {t(locale, "run_clean")}
               </button>
+              <div className="hidden h-8 w-px bg-[var(--border-strong)] lg:block" />
               {isProcessing && (
                 <div className="flex items-center gap-3 text-xs text-muted">
                   <span>{t(locale, "progress_label")}</span>
@@ -459,7 +661,7 @@ export function PhoneCleanerPage() {
             </div>
           </div>
 
-          <div className="surface-card p-6">
+          <div className="surface-card p-6 lg:sticky lg:top-8">
             <h2 className="mb-4 text-sm font-semibold text-[var(--text)]">
               {t(locale, "settings_title")}
             </h2>
@@ -481,6 +683,9 @@ export function PhoneCleanerPage() {
                     </option>
                   ))}
                 </select>
+                <p className="mt-2 text-xs text-soft">
+                  يختار إعدادًا جاهزًا للدولة الافتراضية وطول الأرقام.
+                </p>
               </div>
 
               <CountrySelect
@@ -496,10 +701,20 @@ export function PhoneCleanerPage() {
                   }))
                 }
               />
+              <p className="text-xs text-soft">
+                تُستخدم هذه الدولة عندما لا يوجد كود دولي ولا توجد قاعدة مطابقة.
+              </p>
 
               <div className="grid gap-3">
                 <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
-                  <span>{t(locale, "strict_mode")}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[var(--text)]">
+                      {t(locale, "strict_mode")}
+                    </div>
+                    <div className="text-xs text-soft">
+                      يتحقق من طول الرقم حسب الدولة (أدق لكنه أكثر صرامة).
+                    </div>
+                  </div>
                   <input
                     type="checkbox"
                     checked={settings.strictMode}
@@ -513,7 +728,14 @@ export function PhoneCleanerPage() {
                 </label>
 
                 <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
-                  <span>{t(locale, "allow_missing_trunk")}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[var(--text)]">
+                      {t(locale, "allow_missing_trunk")}
+                    </div>
+                    <div className="text-xs text-soft">
+                      يقبل الأرقام المحلية حتى لو لم تبدأ بـ 0.
+                    </div>
+                  </div>
                   <input
                     type="checkbox"
                     checked={settings.allowMissingTrunkPrefix}
@@ -527,7 +749,14 @@ export function PhoneCleanerPage() {
                 </label>
 
                 <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
-                  <span>{t(locale, "strip_extra_zeros")}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[var(--text)]">
+                      {t(locale, "strip_extra_zeros")}
+                    </div>
+                    <div className="text-xs text-soft">
+                      يزيل الأصفار الزائدة من بداية الرقم المحلي.
+                    </div>
+                  </div>
                   <input
                     type="checkbox"
                     checked={settings.stripExtraLeadingZeros}
@@ -541,7 +770,14 @@ export function PhoneCleanerPage() {
                 </label>
 
                 <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
-                  <span>{t(locale, "detect_name_duplicates")}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[var(--text)]">
+                      {t(locale, "detect_name_duplicates")}
+                    </div>
+                    <div className="text-xs text-soft">
+                      يعرض تكرار الاسم حتى لو اختلف الرقم.
+                    </div>
+                  </div>
                   <input
                     type="checkbox"
                     checked={settings.detectNameDuplicates}
@@ -555,13 +791,328 @@ export function PhoneCleanerPage() {
                 </label>
 
                 <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
-                  <span>{t(locale, "save_input_opt_in")}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[var(--text)]">
+                      {t(locale, "save_input_opt_in")}
+                    </div>
+                    <div className="text-xs text-soft">
+                      يحفظ آخر نص محليًا لتسهيل الرجوع.
+                    </div>
+                  </div>
                   <input
                     type="checkbox"
                     checked={storeInput}
                     onChange={(event) => setStoreInput(event.target.checked)}
                   />
                 </label>
+              </div>
+
+              <div className="divider-line" />
+
+                <div className="space-y-3">
+                  <div>
+                    <div className="section-title">
+                      قواعد إضافة مفتاح الخط للأرقام بدون كود دولي
+                    </div>
+                    <div className="section-subtitle">
+                      تطبق القواعد من الأعلى للأسفل، أول قاعدة مطابقة تفوز.
+                      إذا لم يوجد + أو 00 سيتم اختبار القواعد فقط.
+                    </div>
+                  </div>
+
+                <div className="grid gap-3">
+                  <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
+                    <div>
+                      <div className="text-sm font-semibold text-[var(--text)]">
+                        تطبيق قواعد الإضافة الشرطية بدل الدولة الافتراضية
+                      </div>
+                      <div className="text-xs text-soft">
+                        عند تفعيله سيتم تجاهل الدولة الافتراضية للأرقام المحلية.
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.useConditionalInjection}
+                      onChange={(event) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          useConditionalInjection: event.target.checked,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
+                    <div>
+                      <div className="text-sm font-semibold text-[var(--text)]">
+                        تجاهل الأرقام غير المطابقة
+                      </div>
+                      <div className="text-xs text-soft">
+                        إذا لم تطابق أي قاعدة سيتم وضعها ضمن \"غير صالح\".
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.ignoreUnmatched}
+                      onChange={(event) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          ignoreUnmatched: event.target.checked,
+                          fallbackToDefault: event.target.checked
+                            ? false
+                            : prev.fallbackToDefault,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
+                    <div>
+                      <div className="text-sm font-semibold text-[var(--text)]">
+                        الرجوع للدولة الافتراضية عند عدم التطابق
+                      </div>
+                      <div className="text-xs text-soft">
+                        إن لم تنجح أي قاعدة، استخدم الدولة الافتراضية تلقائيًا.
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.fallbackToDefault}
+                      onChange={(event) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          fallbackToDefault: event.target.checked,
+                          ignoreUnmatched: event.target.checked
+                            ? false
+                            : prev.ignoreUnmatched,
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  {settings.injectionRules.map((rule, index) => {
+                    const errors = getRuleErrors(rule);
+                    const selectedCountry = COUNTRIES.find(
+                      (country) => `+${country.dial_code}` === normalizeDialCodeInput(rule.dialCode)
+                    );
+
+                    return (
+                      <div key={rule.id} className="surface-muted p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="section-title">
+                            قاعدة #{index + 1}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => moveRule(index, -1)}
+                              className="btn-outline px-3 py-1 text-xs"
+                              disabled={index === 0}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveRule(index, 1)}
+                              className="btn-outline px-3 py-1 text-xs"
+                              disabled={index === settings.injectionRules.length - 1}
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeRule(rule.id)}
+                              className="btn-outline px-3 py-1 text-xs"
+                            >
+                              حذف
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                          <input
+                            value={rule.name ?? ""}
+                            onChange={(event) =>
+                              updateRule(rule.id, { name: event.target.value })
+                            }
+                            placeholder="اسم القاعدة (اختياري)"
+                            className="input-base px-3 py-2 text-sm"
+                          />
+                          <input
+                            value={rule.dialCode}
+                            onChange={(event) =>
+                              updateRule(rule.id, {
+                                dialCode: normalizeDialCodeInput(event.target.value),
+                              })
+                            }
+                            placeholder="+966"
+                            className="input-base px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-soft">
+                          يمكنك اختيار دولة أو كتابة كود الاتصال يدويًا.
+                        </p>
+
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <CountrySelect
+                            countries={COUNTRIES}
+                            value={selectedCountry?.iso2 ?? ""}
+                            label="اختيار دولة (يملأ كود الاتصال)"
+                            onChange={(value) => {
+                              const country = COUNTRIES.find(
+                                (item) => item.iso2 === value
+                              );
+                              if (country) {
+                                updateRule(rule.id, {
+                                  dialCode: `+${country.dial_code}`,
+                                });
+                              }
+                            }}
+                          />
+                          <div className="grid gap-2">
+                            <label className="text-xs text-soft">تفعيل القاعدة</label>
+                            <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
+                              <span>مفعلة</span>
+                              <input
+                                type="checkbox"
+                                checked={rule.enabled}
+                                onChange={(event) =>
+                                  updateRule(rule.id, { enabled: event.target.checked })
+                                }
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                          <div className="grid gap-2">
+                            <label className="text-xs text-soft">نمط الطول</label>
+                            <select
+                              value={rule.lengthMode}
+                              onChange={(event) =>
+                                updateRule(rule.id, {
+                                  lengthMode: event.target.value as "equals" | "range",
+                                })
+                              }
+                              className="input-base px-3 py-2 text-sm"
+                            >
+                              <option value="equals">طول ثابت</option>
+                              <option value="range">نطاق</option>
+                            </select>
+                          </div>
+                          {rule.lengthMode === "equals" ? (
+                            <div className="grid gap-2">
+                              <label className="text-xs text-soft">الطول</label>
+                              <input
+                                type="number"
+                                value={rule.lengthEquals ?? ""}
+                                onChange={(event) =>
+                                  updateRule(rule.id, {
+                                    lengthEquals: event.target.value
+                                      ? Number(event.target.value)
+                                      : undefined,
+                                  })
+                                }
+                                className="input-base px-3 py-2 text-sm"
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <div className="grid gap-2">
+                                <label className="text-xs text-soft">الحد الأدنى</label>
+                                <input
+                                  type="number"
+                                  value={rule.lengthMin ?? ""}
+                                  onChange={(event) =>
+                                    updateRule(rule.id, {
+                                      lengthMin: event.target.value
+                                        ? Number(event.target.value)
+                                        : undefined,
+                                    })
+                                  }
+                                  className="input-base px-3 py-2 text-sm"
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <label className="text-xs text-soft">الحد الأعلى</label>
+                                <input
+                                  type="number"
+                                  value={rule.lengthMax ?? ""}
+                                  onChange={(event) =>
+                                    updateRule(rule.id, {
+                                      lengthMax: event.target.value
+                                        ? Number(event.target.value)
+                                        : undefined,
+                                    })
+                                  }
+                                  className="input-base px-3 py-2 text-sm"
+                                />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-xs text-soft">
+                          الطول يُحسب بعد تنظيف الأرقام وإزالة الرموز.
+                        </p>
+
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <div className="grid gap-2">
+                            <label className="text-xs text-soft">البوادئ (مفصولة بفواصل)</label>
+                            <input
+                              value={rule.prefixes.join(",")}
+                              onChange={(event) =>
+                                updateRule(rule.id, {
+                                  prefixes: event.target.value
+                                    .split(",")
+                                    .map((item) => item.trim())
+                                    .filter(Boolean),
+                                })
+                              }
+                              placeholder="05,5,7"
+                              className="input-base px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <label className="text-xs text-soft">تعامل مع بادئة 0</label>
+                            <select
+                              value={rule.trunkHandling}
+                              onChange={(event) =>
+                                updateRule(rule.id, {
+                                  trunkHandling: event.target.value as
+                                    | "keep"
+                                    | "removeLeading0",
+                                })
+                              }
+                              className="input-base px-3 py-2 text-sm"
+                            >
+                              <option value="keep">الإبقاء على 0</option>
+                              <option value="removeLeading0">إزالة 0</option>
+                            </select>
+                          </div>
+                        </div>
+                        <p className="text-xs text-soft">
+                          البوادئ تُختبر قبل إزالة 0. اختر إزالة 0 فقط إذا كان الرقم المحلي يبدأ بها دائمًا.
+                        </p>
+
+                        {errors.length > 0 && (
+                          <div className="mt-3 text-xs text-[var(--danger)]">
+                            {errors.map((err) => (
+                              <div key={err}>{err}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addRule}
+                  className="btn-outline px-4 py-2 text-xs font-semibold"
+                >
+                  إضافة قاعدة جديدة
+                </button>
               </div>
 
               <div className="surface-strong px-4 py-3 text-xs text-muted">
@@ -592,7 +1143,22 @@ export function PhoneCleanerPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSettings(entry.settings);
+                              setSettings((prev) => ({
+                                ...prev,
+                                ...entry.settings,
+                                injectionRules:
+                                  entry.settings.injectionRules ??
+                                  prev.injectionRules,
+                                useConditionalInjection:
+                                  entry.settings.useConditionalInjection ??
+                                  prev.useConditionalInjection,
+                                ignoreUnmatched:
+                                  entry.settings.ignoreUnmatched ??
+                                  prev.ignoreUnmatched,
+                                fallbackToDefault:
+                                  entry.settings.fallbackToDefault ??
+                                  prev.fallbackToDefault,
+                              }));
                             }}
                             className="btn-outline px-3 py-1 text-[11px]"
                           >
@@ -645,6 +1211,7 @@ export function PhoneCleanerPage() {
               duplicateGroupsByPhone={filtered.duplicateGroupsByPhone}
               duplicateGroupsByNamePhone={filtered.duplicateGroupsByNamePhone}
               duplicateGroupsByName={filtered.duplicateGroupsByName}
+              useConditionalInjection={settings.useConditionalInjection}
               onCopyPhones={() => handleCopy("phones")}
               onCopyCsv={() => handleCopy("csv")}
               onDownloadClean={handleDownloadClean}

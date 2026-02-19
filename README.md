@@ -1,70 +1,105 @@
-# phone-cleaner
+# Phone Cleaner
 
-أداة ويب لتنظيف أرقام الهواتف، توحيدها، واكتشاف المكرر مع تقارير واضحة. كل شيء يعمل محليًا داخل المتصفح دون إرسال أي بيانات إلى خادم.
+Production-ready, Arabic-first (RTL) web app for cleaning, normalizing, and deduplicating phone numbers. Everything runs locally in the browser — no server storage, no analytics, and no external phone parsing libraries.
 
-## التشغيل محليًا
+## Highlights
+
+- Arabic UI (RTL) with dark mode.
+- Cleans and normalizes phone numbers to E.164-like format.
+- Robust parsing for mixed input: phone-only, "Name - Phone", "Name, Phone", etc.
+- Built‑in searchable country selector (Arabic/English/ISO2/dial code).
+- Conditional country code injection rules for local numbers without an international prefix.
+- Duplicate detection by phone and by name + phone.
+- Export clean, duplicates, and invalid rows to CSV.
+- Handles large lists using a Web Worker.
+
+## Tech Stack
+
+- Next.js (App Router) + TypeScript
+- Tailwind CSS v4
+- Vitest for unit tests
+
+## Getting Started
 
 ```bash
 npm install
 npm run dev
 ```
 
-ثم افتح المتصفح على `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-## الاختبارات
+## Build
 
 ```bash
-npm run test
+npm run build
+npm run start
 ```
 
-## كيف تعمل عملية التطبيع (Normalization)
+## Scripts
 
-المحرك لا يعتمد على أي مكتبة خارجية لمعالجة الهواتف، ويطبق قواعد ثابتة:
+- `npm run dev` — start development server
+- `npm run build` — production build
+- `npm run start` — run production server
+- `npm run test` — run unit tests
 
-1. تحويل الأرقام العربية إلى الغربية.
-2. إزالة الفراغات والشرطات والأقواس والنقاط والرموز غير الرقمية.
-3. الاحتفاظ بعلامة `+` واحدة فقط في البداية إن وجدت.
-4. تحويل بادئة `00` إلى `+`.
-5. إذا كان الرقم دوليًا (`+` أو `00`) فلا يتم استبدال كود الدولة.
-6. إذا كان الرقم محليًا:
-   - إزالة بادئة الجذع (trunk) مثل `0` عند توفرها في إعداد الدولة.
-   - إضافة كود الدولة الافتراضي.
-7. تحقق الطول حسب الدولة (وضع صارم) أو حسب حدود عامة (وضع مرن).
+## How Normalization Works
 
-النتيجة تكون على شكل:
+The normalization engine is deterministic and does not use external libraries:
+
+1. Convert Arabic digits to Western digits.
+2. Remove spaces, hyphens, parentheses, dots, slashes, underscores.
+3. Keep a single leading `+` if present.
+4. Convert `00` prefix to `+`.
+5. If the number is international (`+` or `00`), keep its dial code.
+6. If the number is local:
+   - Optionally remove trunk prefix (e.g., `0`).
+   - Prepend the selected dial code.
+7. Validate length using country rules (strict) or a generic range (lenient).
+
+Output format:
 
 ```
 +<countryCode><nationalNumber>
 ```
 
-## إضافة دولة جديدة
+## Conditional Country Code Injection
 
-حدّث الملف:
+For local numbers without international prefixes, you can define rules that decide which dial code to add based on:
+
+- Length (exact or range)
+- Prefixes (e.g., `05`, `77`)
+- Trunk handling (keep or remove leading `0`)
+
+Rules are evaluated top‑to‑bottom; the first match wins. If no rule matches, you can choose to:
+
+- Mark as invalid (`no_rule_match`) — default
+- Or fall back to the default country
+
+Rules are stored in localStorage.
+
+## Country Data
+
+Country data is embedded locally:
 
 - `src/features/phone-cleaner/domain/countries.json`
 
-يجب إضافة كائن يحتوي على:
+Each entry includes:
 
 - `iso2`
-- `name_en`
-- `name_ar`
+- `name_en`, `name_ar`
 - `dial_code`
-- `trunk_prefix` (اختياري)
-- `national_number_length_min` و `national_number_length_max` (اختياري)
+- `trunk_prefix` (optional)
+- `national_number_length_min/max` (optional)
 
-## إضافة إعداد مسبق (Preset)
+## Presets
 
-حدّث الملف:
+Presets live in:
 
 - `src/features/phone-cleaner/domain/presets.ts`
 
-كل إعداد مسبق يحدد:
+They define default country + validation/trunk rules for common setups.
 
-- الدولة الافتراضية
-- قواعد الـ trunk
-- أطوال الأرقام الوطنية
-
-## الهيكلة
+## Project Structure
 
 ```
 src/
@@ -75,13 +110,36 @@ src/
       ui/
       utils/
       workers/
+  shared/
 ```
 
-- منطق المعالجة موجود في `domain` كدوال نقية قابلة للاختبار.
-- الواجهة في `ui`.
-- المعالجة الثقيلة في `workers` لتفادي تجميد الواجهة.
+- Domain logic is pure and testable.
+- UI is componentized and RTL‑ready.
+- Heavy processing runs in a Web Worker.
 
-## الخصوصية
+## Privacy
 
-- لا يتم إرسال أي بيانات إلى أي خادم.
-- كل المعالجة تتم على الجهاز.
+- No user data is sent to any server.
+- No analytics or tracking.
+
+## Deployment
+
+This project is ready for deployment on Vercel or any Node‑compatible host.
+
+Vercel (recommended):
+
+1. Push to GitHub.
+2. Import the repo in Vercel.
+3. Deploy.
+
+No env vars required.
+
+## Tests
+
+```bash
+npm run test
+```
+
+## License
+
+Add a license file that matches your intended public usage (e.g., MIT).

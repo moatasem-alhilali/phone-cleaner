@@ -17,6 +17,9 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "منظف أرقام الهاتف",
   description: "تنظيف وتوحيد الأرقام مع تقارير المكرر والغير صالح.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({
