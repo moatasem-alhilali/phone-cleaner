@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# phone-cleaner
 
-## Getting Started
+أداة ويب لتنظيف أرقام الهواتف، توحيدها، واكتشاف المكرر مع تقارير واضحة. كل شيء يعمل محليًا داخل المتصفح دون إرسال أي بيانات إلى خادم.
 
-First, run the development server:
+## التشغيل محليًا
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ثم افتح المتصفح على `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## الاختبارات
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run test
+```
 
-## Learn More
+## كيف تعمل عملية التطبيع (Normalization)
 
-To learn more about Next.js, take a look at the following resources:
+المحرك لا يعتمد على أي مكتبة خارجية لمعالجة الهواتف، ويطبق قواعد ثابتة:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. تحويل الأرقام العربية إلى الغربية.
+2. إزالة الفراغات والشرطات والأقواس والنقاط والرموز غير الرقمية.
+3. الاحتفاظ بعلامة `+` واحدة فقط في البداية إن وجدت.
+4. تحويل بادئة `00` إلى `+`.
+5. إذا كان الرقم دوليًا (`+` أو `00`) فلا يتم استبدال كود الدولة.
+6. إذا كان الرقم محليًا:
+   - إزالة بادئة الجذع (trunk) مثل `0` عند توفرها في إعداد الدولة.
+   - إضافة كود الدولة الافتراضي.
+7. تحقق الطول حسب الدولة (وضع صارم) أو حسب حدود عامة (وضع مرن).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+النتيجة تكون على شكل:
 
-## Deploy on Vercel
+```
++<countryCode><nationalNumber>
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## إضافة دولة جديدة
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+حدّث الملف:
+
+- `src/features/phone-cleaner/domain/countries.json`
+
+يجب إضافة كائن يحتوي على:
+
+- `iso2`
+- `name_en`
+- `name_ar`
+- `dial_code`
+- `trunk_prefix` (اختياري)
+- `national_number_length_min` و `national_number_length_max` (اختياري)
+
+## إضافة إعداد مسبق (Preset)
+
+حدّث الملف:
+
+- `src/features/phone-cleaner/domain/presets.ts`
+
+كل إعداد مسبق يحدد:
+
+- الدولة الافتراضية
+- قواعد الـ trunk
+- أطوال الأرقام الوطنية
+
+## الهيكلة
+
+```
+src/
+  app/
+  features/
+    phone-cleaner/
+      domain/
+      ui/
+      utils/
+      workers/
+```
+
+- منطق المعالجة موجود في `domain` كدوال نقية قابلة للاختبار.
+- الواجهة في `ui`.
+- المعالجة الثقيلة في `workers` لتفادي تجميد الواجهة.
+
+## الخصوصية
+
+- لا يتم إرسال أي بيانات إلى أي خادم.
+- كل المعالجة تتم على الجهاز.

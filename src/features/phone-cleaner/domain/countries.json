@@ -1,0 +1,151 @@
+[
+  {
+    "iso2": "SA",
+    "name_en": "Saudi Arabia",
+    "name_ar": "السعودية",
+    "dial_code": "966",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "YE",
+    "name_en": "Yemen",
+    "name_ar": "اليمن",
+    "dial_code": "967",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "AE",
+    "name_en": "United Arab Emirates",
+    "name_ar": "الإمارات",
+    "dial_code": "971",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "EG",
+    "name_en": "Egypt",
+    "name_ar": "مصر",
+    "dial_code": "20",
+    "trunk_prefix": "0",
+    "national_number_length_min": 10,
+    "national_number_length_max": 10
+  },
+  {
+    "iso2": "JO",
+    "name_en": "Jordan",
+    "name_ar": "الأردن",
+    "dial_code": "962",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "KW",
+    "name_en": "Kuwait",
+    "name_ar": "الكويت",
+    "dial_code": "965",
+    "national_number_length_min": 8,
+    "national_number_length_max": 8
+  },
+  {
+    "iso2": "QA",
+    "name_en": "Qatar",
+    "name_ar": "قطر",
+    "dial_code": "974",
+    "national_number_length_min": 8,
+    "national_number_length_max": 8
+  },
+  {
+    "iso2": "BH",
+    "name_en": "Bahrain",
+    "name_ar": "البحرين",
+    "dial_code": "973",
+    "national_number_length_min": 8,
+    "national_number_length_max": 8
+  },
+  {
+    "iso2": "OM",
+    "name_en": "Oman",
+    "name_ar": "عُمان",
+    "dial_code": "968",
+    "national_number_length_min": 8,
+    "national_number_length_max": 8
+  },
+  {
+    "iso2": "IQ",
+    "name_en": "Iraq",
+    "name_ar": "العراق",
+    "dial_code": "964",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 10
+  },
+  {
+    "iso2": "SY",
+    "name_en": "Syria",
+    "name_ar": "سوريا",
+    "dial_code": "963",
+    "trunk_prefix": "0",
+    "national_number_length_min": 8,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "LB",
+    "name_en": "Lebanon",
+    "name_ar": "لبنان",
+    "dial_code": "961",
+    "trunk_prefix": "0",
+    "national_number_length_min": 7,
+    "national_number_length_max": 8
+  },
+  {
+    "iso2": "PS",
+    "name_en": "Palestine",
+    "name_ar": "فلسطين",
+    "dial_code": "970",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "SD",
+    "name_en": "Sudan",
+    "name_ar": "السودان",
+    "dial_code": "249",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "MA",
+    "name_en": "Morocco",
+    "name_ar": "المغرب",
+    "dial_code": "212",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  },
+  {
+    "iso2": "TN",
+    "name_en": "Tunisia",
+    "name_ar": "تونس",
+    "dial_code": "216",
+    "trunk_prefix": "0",
+    "national_number_length_min": 8,
+    "national_number_length_max": 8
+  },
+  {
+    "iso2": "DZ",
+    "name_en": "Algeria",
+    "name_ar": "الجزائر",
+    "dial_code": "213",
+    "trunk_prefix": "0",
+    "national_number_length_min": 9,
+    "national_number_length_max": 9
+  }
+]

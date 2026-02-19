@@ -1,0 +1,363 @@
+import type {
+  CleaningReport,
+  DuplicateGroup,
+  NormalizedRow,
+} from "../domain/types";
+import type { Locale } from "./i18n";
+import { t } from "./i18n";
+
+export type ResultsFilter = "all" | "valid" | "duplicate" | "invalid";
+
+type ResultsTabsProps = {
+  locale: Locale;
+  report: CleaningReport;
+  filter: ResultsFilter;
+  onFilterChange: (filter: ResultsFilter) => void;
+  cleanRows: NormalizedRow[];
+  invalidRows: NormalizedRow[];
+  duplicateGroupsByPhone: DuplicateGroup[];
+  duplicateGroupsByNamePhone: DuplicateGroup[];
+  duplicateGroupsByName: DuplicateGroup[];
+  onCopyPhones: () => void;
+  onCopyCsv: () => void;
+  onDownloadClean: () => void;
+  onDownloadDuplicates: () => void;
+  onDownloadInvalid: () => void;
+  copyState: string | null;
+};
+
+function StatusBadge({ label, tone }: { label: string; tone: string }) {
+  const colorMap: Record<string, string> = {
+    emerald: "bg-emerald-100 text-emerald-700",
+    amber: "bg-amber-100 text-amber-700",
+    rose: "bg-rose-100 text-rose-700",
+    slate: "bg-slate-100 text-slate-700",
+  };
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+        colorMap[tone] ?? colorMap.slate
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function reasonLabel(locale: Locale, reason?: string): string {
+  if (!reason) return "";
+  return t(locale, `reason_${reason}`);
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <div className="py-6 text-center text-sm text-slate-400">{text}</div>;
+}
+
+export function ResultsTabs({
+  locale,
+  report,
+  filter,
+  onFilterChange,
+  cleanRows,
+  invalidRows,
+  duplicateGroupsByPhone,
+  duplicateGroupsByNamePhone,
+  duplicateGroupsByName,
+  onCopyPhones,
+  onCopyCsv,
+  onDownloadClean,
+  onDownloadDuplicates,
+  onDownloadInvalid,
+  copyState,
+}: ResultsTabsProps) {
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <button
+            type="button"
+            onClick={() => onFilterChange("all")}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+              filter === "all"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {t(locale, "filter_all")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onFilterChange("valid")}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+              filter === "valid"
+                ? "bg-emerald-600 text-white"
+                : "bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {t(locale, "filter_valid")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onFilterChange("duplicate")}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+              filter === "duplicate"
+                ? "bg-amber-500 text-white"
+                : "bg-amber-50 text-amber-700"
+            }`}
+          >
+            {t(locale, "filter_duplicates")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onFilterChange("invalid")}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+              filter === "invalid"
+                ? "bg-rose-600 text-white"
+                : "bg-rose-50 text-rose-700"
+            }`}
+          >
+            {t(locale, "filter_invalid")}
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <button
+            type="button"
+            onClick={onCopyPhones}
+            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+          >
+            {copyState === "phones" ? "✓" : t(locale, "copy_phones")}
+          </button>
+          <button
+            type="button"
+            onClick={onCopyCsv}
+            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+          >
+            {copyState === "csv" ? "✓" : t(locale, "copy_csv")}
+          </button>
+          <button
+            type="button"
+            onClick={onDownloadClean}
+            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+          >
+            {t(locale, "download_clean")}
+          </button>
+          <button
+            type="button"
+            onClick={onDownloadDuplicates}
+            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+          >
+            {t(locale, "download_duplicates")}
+          </button>
+          <button
+            type="button"
+            onClick={onDownloadInvalid}
+            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+          >
+            {t(locale, "download_invalid")}
+          </button>
+        </div>
+      </div>
+
+      {(filter === "all" || filter === "valid") && (
+        <div className="mt-8">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">
+            {t(locale, "clean_results")} ({report.unique.length})
+          </h3>
+          {cleanRows.length === 0 ? (
+            <EmptyState text="لا توجد نتائج." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-separate border-spacing-y-2 text-sm">
+                <thead className="text-xs text-slate-400">
+                  <tr>
+                    <th className="text-right">#</th>
+                    <th className="text-right">الاسم</th>
+                    <th className="text-left">الهاتف</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cleanRows.map((row) => (
+                    <tr key={`clean-${row.index}`} className="bg-slate-50">
+                      <td className="rounded-r-xl px-3 py-2 text-xs text-slate-500">
+                        {row.index}
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {row.name || "—"}
+                      </td>
+                      <td className="rounded-l-xl px-3 py-2 font-mono text-left text-slate-700">
+                        {row.normalized}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(filter === "all" || filter === "duplicate") && (
+        <div className="mt-8">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">
+            {t(locale, "duplicate_by_phone")} ({report.duplicateGroupsByPhone.length})
+          </h3>
+          {duplicateGroupsByPhone.length === 0 ? (
+            <EmptyState text="لا توجد مكررات." />
+          ) : (
+            <div className="space-y-4">
+              {duplicateGroupsByPhone.map((group) => (
+                <div
+                  key={group.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge label={group.key} tone="amber" />
+                      <span className="text-xs text-slate-500">
+                        {group.items.length} عنصر
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {group.items.map((row) => (
+                      <div
+                        key={`dup-${row.index}`}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-xs"
+                      >
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500">#{row.index}</span>
+                            <span className="text-slate-700">
+                              {row.name || "—"}
+                            </span>
+                            <span className="font-mono text-slate-600" dir="ltr">
+                              {row.normalized}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[11px] text-slate-400">
+                            <span>خام: {row.phoneRaw || "—"}</span>
+                            <span className="truncate">السطر: {row.raw || "—"}</span>
+                          </div>
+                        </div>
+                        <span className="text-slate-400">
+                          {row.isKept ? t(locale, "kept") : t(locale, "removed")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {duplicateGroupsByNamePhone.length > 0 && (
+            <div className="mt-6">
+              <h4 className="mb-2 text-xs font-semibold text-slate-500">
+                {t(locale, "duplicate_by_name_phone")} ({
+                  report.duplicateGroupsByNamePhone.length
+                })
+              </h4>
+              <div className="space-y-3">
+                {duplicateGroupsByNamePhone.map((group) => (
+                  <div
+                    key={group.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                  >
+                    <div className="mb-2 flex items-center gap-2 text-xs text-slate-600">
+                      <span>{group.key.split("__")[1] ?? "—"}</span>
+                      <span className="font-mono text-slate-500" dir="ltr">
+                        {group.key.split("__")[0] ?? ""}
+                      </span>
+                      <span className="text-slate-400">{group.items.length} عنصر</span>
+                    </div>
+                    <div className="space-y-1">
+                      {group.items.map((row) => (
+                        <div
+                          key={`name-phone-${row.index}`}
+                          className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-xs"
+                        >
+                          <span className="text-slate-700">
+                            {row.name || "—"}
+                          </span>
+                          <span className="font-mono text-slate-500" dir="ltr">
+                            {row.normalized}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {duplicateGroupsByName.length > 0 && (
+            <div className="mt-6">
+              <h4 className="mb-2 text-xs font-semibold text-slate-500">
+                {t(locale, "duplicate_by_name")} ({
+                  report.duplicateGroupsByName.length
+                })
+              </h4>
+              <div className="space-y-3">
+                {duplicateGroupsByName.map((group) => (
+                  <div
+                    key={group.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                  >
+                    <div className="mb-2 flex items-center gap-2 text-xs text-slate-600">
+                      <span>{group.key}</span>
+                      <span className="text-slate-400">{group.items.length} عنصر</span>
+                    </div>
+                    <div className="space-y-1">
+                      {group.items.map((row) => (
+                        <div
+                          key={`name-${row.index}`}
+                          className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-xs"
+                        >
+                          <span className="text-slate-700">
+                            {row.name || "—"}
+                          </span>
+                          <span className="font-mono text-slate-500" dir="ltr">
+                            {row.normalized}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(filter === "all" || filter === "invalid") && (
+        <div className="mt-8">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">
+            {t(locale, "invalid")} ({report.invalid.length})
+          </h3>
+          {invalidRows.length === 0 ? (
+            <EmptyState text="لا توجد عناصر غير صالحة." />
+          ) : (
+            <div className="space-y-2">
+              {invalidRows.map((row) => (
+                <div
+                  key={`invalid-${row.index}`}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-rose-500">#{row.index}</span>
+                    <span className="text-rose-700">{row.raw || "—"}</span>
+                  </div>
+                  <span className="text-rose-500">
+                    {reasonLabel(locale, row.reason)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
