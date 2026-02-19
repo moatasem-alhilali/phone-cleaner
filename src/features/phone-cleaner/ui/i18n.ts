@@ -59,6 +59,8 @@ export const translations: Dictionaries = {
     restore_settings: "استرجاع الإعدادات",
     restore_input: "استرجاع النص",
     progress_label: "جارٍ المعالجة",
+    theme_dark: "الوضع الداكن",
+    theme_light: "الوضع الفاتح",
   },
   en: {
     app_title: "Phone Cleaner",
@@ -113,6 +115,8 @@ export const translations: Dictionaries = {
     restore_settings: "Restore settings",
     restore_input: "Restore input",
     progress_label: "Processing",
+    theme_dark: "Dark mode",
+    theme_light: "Light mode",
   },
 };
 

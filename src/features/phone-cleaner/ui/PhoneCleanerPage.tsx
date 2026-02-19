@@ -22,6 +22,7 @@ import { downloadTextFile } from "../utils/download";
 import { t, type Locale } from "./i18n";
 
 const HISTORY_KEY = "phone-cleaner.history";
+const THEME_KEY = "phone-cleaner.theme";
 
 type HistoryEntry = {
   id: string;
@@ -60,6 +61,7 @@ export function PhoneCleanerPage() {
   });
   const [storeInput, setStoreInput] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   const [settings, setSettings] = useState<CleaningSettings>({
     defaultCountryIso2: DEFAULT_COUNTRY_ISO2,
@@ -110,6 +112,24 @@ export function PhoneCleanerPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(THEME_KEY);
+    if (saved === "dark" || saved === "light") {
+      setTheme(saved);
+      return;
+    }
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setTheme("dark");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -341,36 +361,47 @@ export function PhoneCleanerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f2e8] text-slate-900">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(15,118,110,0.12),_transparent_55%)]" />
+    <div className="min-h-screen text-[var(--text)]">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="mb-8 flex flex-col gap-3">
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">
-            Phone Cleaner
-          </span>
-          <h1 className="text-3xl font-semibold text-slate-900">
-            {t(locale, "app_title")}
-          </h1>
-          <p className="max-w-2xl text-sm text-slate-600">
-            {t(locale, "app_subtitle")}
-          </p>
+        <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col gap-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+              Phone Cleaner
+            </span>
+            <h1 className="text-3xl font-semibold text-[var(--text)]">
+              {t(locale, "app_title")}
+            </h1>
+            <p className="max-w-2xl text-sm text-muted">
+              {t(locale, "app_subtitle")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+            }
+            className="btn-outline px-4 py-2 text-xs font-semibold"
+            aria-pressed={theme === "dark"}
+          >
+            {theme === "dark" ? t(locale, "theme_light") : t(locale, "theme_dark")}
+          </button>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm">
+          <div className="surface-card p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-700">
+              <h2 className="text-sm font-semibold text-[var(--text)]">
                 {t(locale, "input_title")}
               </h2>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={handleClipboardImport}
-                  className="rounded-full border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-300"
+                  className="btn-outline px-3 py-2 text-xs"
                 >
                   {t(locale, "clipboard_import")}
                 </button>
-                <label className="cursor-pointer rounded-full border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-300">
+                <label className="btn-outline cursor-pointer px-3 py-2 text-xs">
                   {t(locale, "csv_upload")}
                   <input
                     type="file"
@@ -384,7 +415,7 @@ export function PhoneCleanerPage() {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="rounded-full border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-300"
+                  className="btn-outline px-3 py-2 text-xs"
                 >
                   {t(locale, "reset")}
                 </button>
@@ -395,9 +426,9 @@ export function PhoneCleanerPage() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder={t(locale, "input_placeholder")}
-              className="h-64 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-teal-500 focus:outline-none"
+              className="input-base h-64 w-full resize-none px-4 py-3 text-sm"
             />
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-muted">
               {t(locale, "input_hint")}
             </p>
 
@@ -406,16 +437,16 @@ export function PhoneCleanerPage() {
                 type="button"
                 onClick={handleClean}
                 disabled={isProcessing}
-                className="rounded-full bg-teal-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-teal-400"
+                className="btn-primary px-5 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {t(locale, "run_clean")}
               </button>
               {isProcessing && (
-                <div className="flex items-center gap-3 text-xs text-slate-500">
+                <div className="flex items-center gap-3 text-xs text-muted">
                   <span>{t(locale, "progress_label")}</span>
-                  <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-2 w-32 overflow-hidden rounded-full bg-[var(--surface-muted)]">
                     <div
-                      className="h-full bg-teal-600"
+                      className="h-full bg-[var(--accent)]"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -423,25 +454,25 @@ export function PhoneCleanerPage() {
                 </div>
               )}
               {error && (
-                <span className="text-xs text-rose-600">{error}</span>
+                <span className="text-xs text-[var(--danger)]">{error}</span>
               )}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold text-slate-700">
+          <div className="surface-card p-6">
+            <h2 className="mb-4 text-sm font-semibold text-[var(--text)]">
               {t(locale, "settings_title")}
             </h2>
 
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                <label className="mb-2 block text-sm font-semibold text-[var(--text)]">
                   {t(locale, "preset_label")}
                 </label>
                 <select
                   value={presetValue}
                   onChange={(event) => handlePresetChange(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                  className="input-base w-full px-4 py-3 text-sm"
                 >
                   <option value="custom">{t(locale, "preset_custom")}</option>
                   {PRESETS.map((preset) => (
@@ -467,7 +498,7 @@ export function PhoneCleanerPage() {
               />
 
               <div className="grid gap-3">
-                <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
                   <span>{t(locale, "strict_mode")}</span>
                   <input
                     type="checkbox"
@@ -481,7 +512,7 @@ export function PhoneCleanerPage() {
                   />
                 </label>
 
-                <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
                   <span>{t(locale, "allow_missing_trunk")}</span>
                   <input
                     type="checkbox"
@@ -495,7 +526,7 @@ export function PhoneCleanerPage() {
                   />
                 </label>
 
-                <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
                   <span>{t(locale, "strip_extra_zeros")}</span>
                   <input
                     type="checkbox"
@@ -509,7 +540,7 @@ export function PhoneCleanerPage() {
                   />
                 </label>
 
-                <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
                   <span>{t(locale, "detect_name_duplicates")}</span>
                   <input
                     type="checkbox"
@@ -523,7 +554,7 @@ export function PhoneCleanerPage() {
                   />
                 </label>
 
-                <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                <label className="surface-strong flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted">
                   <span>{t(locale, "save_input_opt_in")}</span>
                   <input
                     type="checkbox"
@@ -533,8 +564,8 @@ export function PhoneCleanerPage() {
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
-                <strong className="block text-slate-600">
+              <div className="surface-strong px-4 py-3 text-xs text-muted">
+                <strong className="block text-[var(--text)]">
                   {t(locale, "history_title")}
                 </strong>
                 {!mounted && <span>{t(locale, "history_empty")}</span>}
@@ -546,13 +577,13 @@ export function PhoneCleanerPage() {
                     {history.map((entry) => (
                       <div
                         key={entry.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                        className="surface-muted flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                       >
                         <div>
-                          <div className="text-xs text-slate-600">
+                          <div className="text-xs text-[var(--text)]">
                             {formatDate(entry.createdAt)}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-soft">
                             صالح: {entry.stats.valid} | مكرر: {entry.stats.duplicate} | غير صالح:{" "}
                             {entry.stats.invalid}
                           </div>
@@ -563,7 +594,7 @@ export function PhoneCleanerPage() {
                             onClick={() => {
                               setSettings(entry.settings);
                             }}
-                            className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-500"
+                            className="btn-outline px-3 py-1 text-[11px]"
                           >
                             {t(locale, "restore_settings")}
                           </button>
@@ -571,7 +602,7 @@ export function PhoneCleanerPage() {
                             <button
                               type="button"
                               onClick={() => setInput(entry.inputSample ?? "")}
-                              className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-500"
+                              className="btn-outline px-3 py-1 text-[11px]"
                             >
                               {t(locale, "restore_input")}
                             </button>
@@ -590,16 +621,16 @@ export function PhoneCleanerPage() {
           <section className="mt-8 space-y-6">
             <StatsBar stats={report.stats} />
 
-            <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm">
+            <div className="surface-card p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold text-slate-700">
+                <h2 className="text-sm font-semibold text-[var(--text)]">
                   {t(locale, "results_title")}
                 </h2>
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={t(locale, "search_results")}
-                  className="w-full max-w-xs rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                  className="input-base w-full max-w-xs px-4 py-2 text-sm"
                 />
               </div>
             </div>

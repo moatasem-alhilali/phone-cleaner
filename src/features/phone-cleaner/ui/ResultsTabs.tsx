@@ -28,19 +28,13 @@ type ResultsTabsProps = {
 
 function StatusBadge({ label, tone }: { label: string; tone: string }) {
   const colorMap: Record<string, string> = {
-    emerald: "bg-emerald-100 text-emerald-700",
-    amber: "bg-amber-100 text-amber-700",
-    rose: "bg-rose-100 text-rose-700",
-    slate: "bg-slate-100 text-slate-700",
+    success: "chip chip-success",
+    warning: "chip chip-warning",
+    danger: "chip chip-danger",
+    neutral: "chip",
   };
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-        colorMap[tone] ?? colorMap.slate
-      }`}
-    >
-      {label}
-    </span>
+    <span className={colorMap[tone] ?? colorMap.neutral}>{label}</span>
   );
 }
 
@@ -50,7 +44,7 @@ function reasonLabel(locale: Locale, reason?: string): string {
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="py-6 text-center text-sm text-slate-400">{text}</div>;
+  return <div className="py-6 text-center text-sm text-soft">{text}</div>;
 }
 
 export function ResultsTabs({
@@ -71,16 +65,16 @@ export function ResultsTabs({
   copyState,
 }: ResultsTabsProps) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm">
+    <section className="surface-card p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex items-center gap-2 text-sm text-muted">
           <button
             type="button"
             onClick={() => onFilterChange("all")}
             className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
               filter === "all"
-                ? "bg-slate-900 text-white"
-                : "bg-slate-100 text-slate-600"
+                ? "bg-[var(--text)] text-[var(--surface-strong)]"
+                : "bg-[var(--surface-muted)] text-muted"
             }`}
           >
             {t(locale, "filter_all")}
@@ -90,8 +84,8 @@ export function ResultsTabs({
             onClick={() => onFilterChange("valid")}
             className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
               filter === "valid"
-                ? "bg-emerald-600 text-white"
-                : "bg-emerald-50 text-emerald-700"
+                ? "bg-[var(--success)] text-white"
+                : "bg-[var(--success-soft)] text-[var(--success)]"
             }`}
           >
             {t(locale, "filter_valid")}
@@ -101,8 +95,8 @@ export function ResultsTabs({
             onClick={() => onFilterChange("duplicate")}
             className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
               filter === "duplicate"
-                ? "bg-amber-500 text-white"
-                : "bg-amber-50 text-amber-700"
+                ? "bg-[var(--warning)] text-white"
+                : "bg-[var(--warning-soft)] text-[var(--warning)]"
             }`}
           >
             {t(locale, "filter_duplicates")}
@@ -112,8 +106,8 @@ export function ResultsTabs({
             onClick={() => onFilterChange("invalid")}
             className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
               filter === "invalid"
-                ? "bg-rose-600 text-white"
-                : "bg-rose-50 text-rose-700"
+                ? "bg-[var(--danger)] text-white"
+                : "bg-[var(--danger-soft)] text-[var(--danger)]"
             }`}
           >
             {t(locale, "filter_invalid")}
@@ -123,35 +117,35 @@ export function ResultsTabs({
           <button
             type="button"
             onClick={onCopyPhones}
-            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+            className="btn-outline px-3 py-2"
           >
             {copyState === "phones" ? "✓" : t(locale, "copy_phones")}
           </button>
           <button
             type="button"
             onClick={onCopyCsv}
-            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+            className="btn-outline px-3 py-2"
           >
             {copyState === "csv" ? "✓" : t(locale, "copy_csv")}
           </button>
           <button
             type="button"
             onClick={onDownloadClean}
-            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+            className="btn-outline px-3 py-2"
           >
             {t(locale, "download_clean")}
           </button>
           <button
             type="button"
             onClick={onDownloadDuplicates}
-            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+            className="btn-outline px-3 py-2"
           >
             {t(locale, "download_duplicates")}
           </button>
           <button
             type="button"
             onClick={onDownloadInvalid}
-            className="rounded-full border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-300"
+            className="btn-outline px-3 py-2"
           >
             {t(locale, "download_invalid")}
           </button>
@@ -160,7 +154,7 @@ export function ResultsTabs({
 
       {(filter === "all" || filter === "valid") && (
         <div className="mt-8">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">
             {t(locale, "clean_results")} ({report.unique.length})
           </h3>
           {cleanRows.length === 0 ? (
@@ -168,7 +162,7 @@ export function ResultsTabs({
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-separate border-spacing-y-2 text-sm">
-                <thead className="text-xs text-slate-400">
+                <thead className="text-xs text-muted">
                   <tr>
                     <th className="text-right">#</th>
                     <th className="text-right">الاسم</th>
@@ -177,14 +171,14 @@ export function ResultsTabs({
                 </thead>
                 <tbody>
                   {cleanRows.map((row) => (
-                    <tr key={`clean-${row.index}`} className="bg-slate-50">
-                      <td className="rounded-r-xl px-3 py-2 text-xs text-slate-500">
+                    <tr key={`clean-${row.index}`} className="surface-muted">
+                      <td className="rounded-r-xl px-3 py-2 text-xs text-muted">
                         {row.index}
                       </td>
-                      <td className="px-3 py-2 text-slate-700">
+                      <td className="px-3 py-2 text-[var(--text)]">
                         {row.name || "—"}
                       </td>
-                      <td className="rounded-l-xl px-3 py-2 font-mono text-left text-slate-700">
+                      <td className="rounded-l-xl px-3 py-2 font-mono text-left text-[var(--text)]">
                         {row.normalized}
                       </td>
                     </tr>
@@ -198,7 +192,7 @@ export function ResultsTabs({
 
       {(filter === "all" || filter === "duplicate") && (
         <div className="mt-8">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">
             {t(locale, "duplicate_by_phone")} ({report.duplicateGroupsByPhone.length})
           </h3>
           {duplicateGroupsByPhone.length === 0 ? (
@@ -208,12 +202,12 @@ export function ResultsTabs({
               {duplicateGroupsByPhone.map((group) => (
                 <div
                   key={group.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  className="surface-muted p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <StatusBadge label={group.key} tone="amber" />
-                      <span className="text-xs text-slate-500">
+                      <StatusBadge label={group.key} tone="warning" />
+                      <span className="text-xs text-muted">
                         {group.items.length} عنصر
                       </span>
                     </div>
@@ -222,24 +216,24 @@ export function ResultsTabs({
                     {group.items.map((row) => (
                       <div
                         key={`dup-${row.index}`}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-xs"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[var(--surface-strong)] px-3 py-2 text-xs"
                       >
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-500">#{row.index}</span>
-                            <span className="text-slate-700">
+                            <span className="text-muted">#{row.index}</span>
+                            <span className="text-[var(--text)]">
                               {row.name || "—"}
                             </span>
-                            <span className="font-mono text-slate-600" dir="ltr">
+                            <span className="font-mono text-muted" dir="ltr">
                               {row.normalized}
                             </span>
                           </div>
-                          <div className="flex flex-wrap gap-2 text-[11px] text-slate-400">
+                          <div className="flex flex-wrap gap-2 text-[11px] text-soft">
                             <span>خام: {row.phoneRaw || "—"}</span>
                             <span className="truncate">السطر: {row.raw || "—"}</span>
                           </div>
                         </div>
-                        <span className="text-slate-400">
+                        <span className="text-soft">
                           {row.isKept ? t(locale, "kept") : t(locale, "removed")}
                         </span>
                       </div>
@@ -252,7 +246,7 @@ export function ResultsTabs({
 
           {duplicateGroupsByNamePhone.length > 0 && (
             <div className="mt-6">
-              <h4 className="mb-2 text-xs font-semibold text-slate-500">
+              <h4 className="mb-2 text-xs font-semibold text-muted">
                 {t(locale, "duplicate_by_name_phone")} ({
                   report.duplicateGroupsByNamePhone.length
                 })
@@ -261,25 +255,25 @@ export function ResultsTabs({
                 {duplicateGroupsByNamePhone.map((group) => (
                   <div
                     key={group.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                    className="surface-muted p-3"
                   >
-                    <div className="mb-2 flex items-center gap-2 text-xs text-slate-600">
+                    <div className="mb-2 flex items-center gap-2 text-xs text-muted">
                       <span>{group.key.split("__")[1] ?? "—"}</span>
-                      <span className="font-mono text-slate-500" dir="ltr">
+                      <span className="font-mono text-soft" dir="ltr">
                         {group.key.split("__")[0] ?? ""}
                       </span>
-                      <span className="text-slate-400">{group.items.length} عنصر</span>
+                      <span className="text-soft">{group.items.length} عنصر</span>
                     </div>
                     <div className="space-y-1">
                       {group.items.map((row) => (
                         <div
                           key={`name-phone-${row.index}`}
-                          className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-xs"
+                          className="flex items-center justify-between rounded-lg bg-[var(--surface-strong)] px-3 py-2 text-xs"
                         >
-                          <span className="text-slate-700">
+                          <span className="text-[var(--text)]">
                             {row.name || "—"}
                           </span>
-                          <span className="font-mono text-slate-500" dir="ltr">
+                          <span className="font-mono text-soft" dir="ltr">
                             {row.normalized}
                           </span>
                         </div>
@@ -293,7 +287,7 @@ export function ResultsTabs({
 
           {duplicateGroupsByName.length > 0 && (
             <div className="mt-6">
-              <h4 className="mb-2 text-xs font-semibold text-slate-500">
+              <h4 className="mb-2 text-xs font-semibold text-muted">
                 {t(locale, "duplicate_by_name")} ({
                   report.duplicateGroupsByName.length
                 })
@@ -302,22 +296,22 @@ export function ResultsTabs({
                 {duplicateGroupsByName.map((group) => (
                   <div
                     key={group.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                    className="surface-muted p-3"
                   >
-                    <div className="mb-2 flex items-center gap-2 text-xs text-slate-600">
+                    <div className="mb-2 flex items-center gap-2 text-xs text-muted">
                       <span>{group.key}</span>
-                      <span className="text-slate-400">{group.items.length} عنصر</span>
+                      <span className="text-soft">{group.items.length} عنصر</span>
                     </div>
                     <div className="space-y-1">
                       {group.items.map((row) => (
                         <div
                           key={`name-${row.index}`}
-                          className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-xs"
+                          className="flex items-center justify-between rounded-lg bg-[var(--surface-strong)] px-3 py-2 text-xs"
                         >
-                          <span className="text-slate-700">
+                          <span className="text-[var(--text)]">
                             {row.name || "—"}
                           </span>
-                          <span className="font-mono text-slate-500" dir="ltr">
+                          <span className="font-mono text-soft" dir="ltr">
                             {row.normalized}
                           </span>
                         </div>
@@ -333,7 +327,7 @@ export function ResultsTabs({
 
       {(filter === "all" || filter === "invalid") && (
         <div className="mt-8">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">
             {t(locale, "invalid")} ({report.invalid.length})
           </h3>
           {invalidRows.length === 0 ? (
@@ -343,13 +337,13 @@ export function ResultsTabs({
               {invalidRows.map((row) => (
                 <div
                   key={`invalid-${row.index}`}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--danger-soft)] bg-[var(--danger-soft)] px-4 py-3 text-xs"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-rose-500">#{row.index}</span>
-                    <span className="text-rose-700">{row.raw || "—"}</span>
+                    <span className="text-[var(--danger)]">#{row.index}</span>
+                    <span className="text-[var(--danger)]">{row.raw || "—"}</span>
                   </div>
-                  <span className="text-rose-500">
+                  <span className="text-[var(--danger)]">
                     {reasonLabel(locale, row.reason)}
                   </span>
                 </div>

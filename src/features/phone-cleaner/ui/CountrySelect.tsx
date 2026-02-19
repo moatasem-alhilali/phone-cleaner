@@ -46,33 +46,33 @@ export function CountrySelect({
 
   return (
     <div className="relative">
-      <label className="mb-2 block text-sm font-semibold text-slate-700">
+      <label className="mb-2 block text-sm font-semibold text-[var(--text)]">
         {label}
       </label>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right text-sm shadow-sm transition hover:border-slate-300"
+        className="input-base flex w-full items-center justify-between px-4 py-3 text-right text-sm shadow-sm"
       >
-        <span className="flex items-center gap-2 text-slate-900">
+        <span className="flex items-center gap-2 text-[var(--text)]">
           <span className="text-lg">{selected ? flagEmoji(selected.iso2) : "🌍"}</span>
           <span>{selected ? selected.name_ar : "—"}</span>
           {selected && (
-            <span className="text-xs text-slate-500">+{selected.dial_code}</span>
+            <span className="text-xs text-muted">+{selected.dial_code}</span>
           )}
         </span>
-        <span className="text-xs text-slate-400">▾</span>
+        <span className="text-xs text-muted">▾</span>
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-lg">
+        <div className="surface-strong absolute z-20 mt-2 w-full p-3">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={placeholder ?? "ابحث عن دولة"}
             aria-label={placeholder ?? "ابحث عن دولة"}
-            className="mb-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
+            className="input-base mb-3 w-full px-3 py-2 text-sm"
           />
           <ul className="max-h-64 overflow-auto" role="listbox">
             {filtered.map((country) => (
@@ -83,18 +83,18 @@ export function CountrySelect({
                     onChange(country.iso2);
                     setOpen(false);
                   }}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-right text-sm text-slate-700 transition hover:bg-slate-50"
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-right text-sm text-[var(--text)] transition hover:bg-[var(--surface-muted)]"
                 >
                   <span className="flex items-center gap-2">
                     <span className="text-lg">{flagEmoji(country.iso2)}</span>
                     <span>{country.name_ar}</span>
                   </span>
-                  <span className="text-xs text-slate-400">+{country.dial_code}</span>
+                  <span className="text-xs text-muted">+{country.dial_code}</span>
                 </button>
               </li>
             ))}
             {filtered.length === 0 && (
-              <li className="px-3 py-4 text-center text-xs text-slate-400">
+              <li className="px-3 py-4 text-center text-xs text-muted">
                 لا توجد نتائج
               </li>
             )}
